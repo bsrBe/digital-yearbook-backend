@@ -31,7 +31,13 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/signatures', signatureRoutes);
 app.use('/api/memories', memoryRoutes);
 app.use('/api/highlights', highlightRoutes);
-
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Digital Yearbook API is running',
+    version: '1.0.0'
+  });
+});
 // Error handling
 app.use(notFound);
 app.use(errorHandler);
