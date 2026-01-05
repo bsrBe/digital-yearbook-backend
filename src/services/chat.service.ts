@@ -1,11 +1,13 @@
 import { ChatMessage } from '../models';
-import { areFriends } from './friendship.service';
+import { areFriends, isBlockedByEither } from './friendship.service';
 
 export const getConversation = async (userId1: string, userId2: string) => {
-  const friends = await areFriends(userId1, userId2);
-  if (!friends) {
-    throw new Error('You can only chat with friends');
+  /* 
+  const blocked = await isBlockedByEither(userId1, userId2);
+  if (blocked) {
+    throw new Error('You cannot access this conversation');
   }
+  */
 
   return ChatMessage.find({
     $or: [
@@ -18,14 +20,16 @@ export const getConversation = async (userId1: string, userId2: string) => {
 export const sendMessage = async (
   senderId: string,
   receiverId: string,
-  content: string
+  content: string,
+  messageType: 'text' | 'image' = 'text',
+  mediaUrl?: string
 ) => {
-  const friends = await areFriends(senderId, receiverId);
-  if (!friends) {
-    throw new Error('You can only message friends');
+  const blocked = await isBlockedByEither(senderId, receiverId);
+  if (blocked) {
+    throw new Error('You cannot message this user');
   }
 
-  return ChatMessage.create({ senderId, receiverId, content });
+  return ChatMessage.create({ senderId, receiverId, content, messageType, mediaUrl });
 };
 
 export const markAsRead = async (messageId: string, userId: string) => {

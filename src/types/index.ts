@@ -34,6 +34,8 @@ export interface IFriendship extends Document {
   requester: Types.ObjectId;
   recipient: Types.ObjectId;
   status: FriendshipStatus;
+  previousStatus?: FriendshipStatus | 'none';
+  originalRequester?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +45,8 @@ export interface IChatMessage extends Document {
   senderId: Types.ObjectId;
   receiverId: Types.ObjectId;
   content: string;
+  messageType: 'text' | 'image';
+  mediaUrl?: string;
   read: boolean;
   createdAt: Date;
 }

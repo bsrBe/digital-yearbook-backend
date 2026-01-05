@@ -1,10 +1,23 @@
 import { Router, Response } from 'express';
-import { protect } from '../middleware';
-import { chatService } from '../services';
+import { protect, uploadSingle } from '../middleware';
+import { chatService, uploadService } from '../services';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest } from '../types';
 
 const router = Router();
+
+// Upload image for chat
+router.post('/upload', protect, uploadSingle, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      return sendError(res, 'No file uploaded');
+    }
+    const result = await uploadService.uploadToCloudinary(req.file.buffer, 'chat_media');
+    sendSuccess(res, { url: result.url }, 'Image uploaded');
+  } catch (error) {
+    sendError(res, (error as Error).message);
+  }
+});
 
 // Get conversation with user
 router.get('/:userId', protect, async (req: AuthRequest, res: Response) => {
@@ -22,7 +35,9 @@ router.post('/:userId', protect, async (req: AuthRequest, res: Response) => {
     const message = await chatService.sendMessage(
       req.user!._id.toString(),
       req.params.userId,
-      req.body.content
+      req.body.content,
+      req.body.messageType,
+      req.body.mediaUrl
     );
     sendSuccess(res, message, 'Message sent', 201);
   } catch (error) {

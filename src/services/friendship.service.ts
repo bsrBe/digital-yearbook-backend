@@ -44,16 +44,32 @@ export const respondToRequest = async (
 };
 
 export const blockUser = async (blockerId: string, blockedId: string): Promise<void> => {
-  // Remove any existing friendship
-  await Friendship.deleteOne({
+  let friendship = await Friendship.findOne({
     $or: [
       { requester: blockerId, recipient: blockedId },
       { requester: blockedId, recipient: blockerId },
     ],
   });
 
-  // Create blocked relationship
-  await Friendship.create({ requester: blockerId, recipient: blockedId, status: 'blocked' });
+  if (friendship) {
+    // Save current state
+    friendship.previousStatus = friendship.status;
+    friendship.originalRequester = friendship.requester;
+    
+    // Update to blocked state (requester is always the blocker)
+    friendship.requester = new Types.ObjectId(blockerId);
+    friendship.recipient = new Types.ObjectId(blockedId);
+    friendship.status = 'blocked';
+    await friendship.save();
+  } else {
+    // Create new blocked state
+    await Friendship.create({
+      requester: blockerId,
+      recipient: blockedId,
+      status: 'blocked',
+      previousStatus: 'none',
+    });
+  }
 };
 
 export const areFriends = async (userId1: string, userId2: string): Promise<boolean> => {
@@ -80,5 +96,56 @@ export const getFriends = async (userId: string): Promise<Types.ObjectId[]> => {
 };
 
 export const getPendingRequests = async (userId: string) => {
-  return Friendship.find({ recipient: userId, status: 'pending' }).populate('requester', 'fullName profilePhoto');
+  return Friendship.find({
+    $or: [{ requester: userId }, { recipient: userId }],
+    status: 'pending',
+  })
+    .populate('requester', 'fullName profilePhoto department')
+    .populate('recipient', 'fullName profilePhoto department');
+};
+
+export const unblockUser = async (blockerId: string, blockedId: string): Promise<void> => {
+  const friendship = await Friendship.findOne({
+    requester: blockerId,
+    recipient: blockedId,
+    status: 'blocked',
+  });
+
+  if (!friendship) return;
+
+  if (friendship.previousStatus === 'accepted' || friendship.previousStatus === 'pending') {
+    // Restore previous status
+    const original = friendship.originalRequester!;
+    const recipient = original.toString() === friendship.requester.toString() 
+      ? friendship.recipient 
+      : friendship.requester;
+    
+    friendship.status = friendship.previousStatus as FriendshipStatus;
+    friendship.requester = original;
+    friendship.recipient = recipient;
+    friendship.previousStatus = 'none';
+    await friendship.save();
+  } else {
+    // Delete if no meaningful previous status
+    await friendship.deleteOne();
+  }
+};
+
+export const getBlockedUsers = async (userId: string): Promise<Types.ObjectId[]> => {
+  const friendships = await Friendship.find({
+    requester: userId,
+    status: 'blocked',
+  });
+
+  return friendships.map((f) => f.recipient);
+};
+
+export const isBlockedByEither = async (userId1: string, userId2: string): Promise<boolean> => {
+  const blocked = await Friendship.findOne({
+    $or: [
+      { requester: userId1, recipient: userId2, status: 'blocked' },
+      { requester: userId2, recipient: userId1, status: 'blocked' },
+    ],
+  });
+  return !!blocked;
 };

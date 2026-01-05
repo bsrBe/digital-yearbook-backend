@@ -10,6 +10,11 @@ const friendshipSchema = new Schema<IFriendship>(
       enum: ['pending', 'accepted', 'rejected', 'blocked'],
       default: 'pending',
     },
+    previousStatus: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected', 'blocked', 'none'],
+    },
+    originalRequester: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );

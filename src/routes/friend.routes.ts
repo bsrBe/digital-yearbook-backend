@@ -46,6 +46,16 @@ router.post('/block/:userId', protect, async (req: AuthRequest, res: Response) =
   }
 });
 
+// Unblock user
+router.post('/unblock/:userId', protect, async (req: AuthRequest, res: Response) => {
+  try {
+    await friendshipService.unblockUser(req.user!._id.toString(), req.params.userId);
+    sendSuccess(res, null, 'User unblocked');
+  } catch (error) {
+    sendError(res, (error as Error).message);
+  }
+});
+
 // Get friends list
 router.get('/', protect, async (req: AuthRequest, res: Response) => {
   try {
@@ -61,6 +71,16 @@ router.get('/pending', protect, async (req: AuthRequest, res: Response) => {
   try {
     const requests = await friendshipService.getPendingRequests(req.user!._id.toString());
     sendSuccess(res, requests);
+  } catch (error) {
+    sendError(res, (error as Error).message);
+  }
+});
+
+// Get blocked users
+router.get('/blocked', protect, async (req: AuthRequest, res: Response) => {
+  try {
+    const blocked = await friendshipService.getBlockedUsers(req.user!._id.toString());
+    sendSuccess(res, blocked);
   } catch (error) {
     sendError(res, (error as Error).message);
   }
